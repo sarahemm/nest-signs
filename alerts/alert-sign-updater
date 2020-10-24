@@ -71,6 +71,7 @@ end
 def find_acked_alerts(all_alerts)
   acked_alerts = []
   unacked_alerts = []
+  File.open("alerts-acked.txt", "w") {} if !File.exist? "alerts-acked.txt"
   acked_alerts_file = File.read("alerts-acked.txt").split("\n")
   all_alerts.each do |alert|
     if(acked_alerts_file.include? alert) then
