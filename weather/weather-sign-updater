@@ -8,6 +8,8 @@ require './sign.rb'
 require 'logger'
 require 'pp'
 
+$stdout.sync = true
+
 updates_today = ARGV[0].to_i || 0
 
 # if no significant upcoming weather, show MID_HOUR weather until reached, then

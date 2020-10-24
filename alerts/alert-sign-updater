@@ -92,6 +92,8 @@ def get_number_suffix(input)
   return suffixes[input[-1].to_i]
 end
 
+$stdout.sync = true
+
 signintf = SignInterface.new(type: :alert)
 last_alerts = []
 last_acked_alerts = []

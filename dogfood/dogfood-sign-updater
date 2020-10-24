@@ -26,6 +26,7 @@ def filter_steps(step_info)
   step_info
 end
 
+$stdout.sync = true
 logger = Logger.new(STDOUT)
 logger.datetime_format = '%Y-%m-%d %H:%M'
 sign = Sign.new(logger: logger)

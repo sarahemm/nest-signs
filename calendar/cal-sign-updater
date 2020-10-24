@@ -11,6 +11,8 @@ require './ui.rb'
 SCREEN_RETURN_TIME = 90
 TOMORROW_AFTER_HOUR = 20
 
+$stdout.sync = true
+
 puts "Initializing calendar manager..."
 cal = CalendarManager.new
 
