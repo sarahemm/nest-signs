@@ -1,0 +1,14 @@
+---
+keys:
+  syncsign: 'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx'
+  climacell: 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx'
+signs:
+  calendar: 'xxxxxxxxxxxxxxxx'
+  alert: 'xxxxxxxxxxxxxxxx'
+  weather:
+    - 'xxxxxxxxxxxxxxxx'
+    - 'xxxxxxxxxxxxxxxx'
+  dogfood: 'xxxxxxxxxxxxxxxx'
+weather:
+  lat: xx.xxxxxx
+  lon: -xx.xxxxxx

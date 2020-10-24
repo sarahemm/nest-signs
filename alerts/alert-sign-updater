@@ -1,0 +1,182 @@
+#!/usr/bin/ruby
+
+$LOAD_PATH << "../core"
+
+require 'syncsign'
+require 'net/http'
+require 'json'
+require 'date'
+
+require 'signcore.rb'
+
+BATTERIES=[
+  {
+    item: "Zwave_FrontDoorLockBattery",
+    name: "Deadbolt",
+    alert_level: 65,
+    type: :replace
+  },
+  {
+    item: "Tradfri_LivingRoomBlind_BatteryLevel",
+    name: "Blind",
+    alert_level: 30,
+    type: :charge
+  },
+  {
+    item: "Tradfri_LivingRoomBlindRemote_BatteryLevel",
+    name: "Blind Remote",
+    alert_level: 30,
+    type: :replace
+  }
+]
+
+
+def get_openhab_item(item)
+  JSON.parse(Net::HTTP.get("localhost", "/rest/items/#{item}", 8080))['state']
+end
+
+def get_battery_alerts
+  alerts = []
+  BATTERIES.each do |battinfo|
+    level = get_openhab_item(battinfo[:item]).to_i
+    if(!level) then
+      alerts.push("#{battinfo[:name]} N/A")
+      next
+    end
+    if(level < battinfo[:alert_level]) then
+      alerts.push "#{battinfo[:type].to_s.capitalize} #{battinfo[:name]} Batt"
+    end
+  end
+
+  alerts
+end
+
+def get_alert_list
+  alert_list = []
+
+  hvac = get_openhab_item("HVAC_Alert")
+  printer = get_openhab_item("Printer_Alert")
+  battery_alerts = get_battery_alerts
+
+  if(/ilter/.match(hvac)) then
+    alert_list.push "Replace HVAC Filter"
+  end
+  if(matches = /Toner Low ([A-Za-z]+)/.match(printer)) then
+    alert_list.push "#{matches[1]} Toner Low"
+  end
+
+  alert_list + battery_alerts
+end
+
+def find_acked_alerts(all_alerts)
+  acked_alerts = []
+  unacked_alerts = []
+  acked_alerts_file = File.read("alerts-acked.txt").split("\n")
+  all_alerts.each do |alert|
+    if(acked_alerts_file.include? alert) then
+      acked_alerts.push alert
+    else
+      unacked_alerts.push alert
+    end
+  end
+
+  # write acked alerts back out, so any that have cleared are removed from the file
+  File.write("alerts-acked.txt", acked_alerts.join("\n"))
+
+  [unacked_alerts, acked_alerts]
+end
+
+def get_number_suffix(input)
+  suffixes = ["th", "st", "nd", "rd", "th", "th", "th", "th", "th", "th"]
+  return suffixes[input[-1].to_i]
+end
+
+signintf = SignInterface.new(type: :alert)
+last_alerts = []
+last_acked_alerts = []
+last_date = Date.today
+
+while(true) do
+  puts "Getting alerts..."
+  all_alerts = get_alert_list
+  (alerts, acked_alerts) = find_acked_alerts(all_alerts)
+  puts "Found #{alerts.length} active alerts and #{acked_alerts.length} acknowledged alerts."
+  puts "Active alerts: #{alerts.join(",")}" if alerts.length > 0
+
+  items = []
+  if(alerts.length == 0) then
+    items.push SyncSign::Widget::Textbox.new(
+      x: 0, y: 0, width: 296, height: 36,
+      align: :center,
+      font: :roboto_slab,
+      size: 24,
+      text: "System Normal"
+    )
+    if(acked_alerts) then
+      items.push SyncSign::Widget::Textbox.new(
+        x: 0, y: 36, width: 296, height: 24,
+        align: :center,
+        font: :aprilsans,
+        size: 24,
+        text: "#{acked_alerts.length} acknowledged alert#{acked_alerts.length == 1 ? '' : 's'}"
+      )
+    end
+    now = Time.now.strftime("%A %B %d")
+    # shorten the month name if it's >6 chars
+    now = Time.now.strftime("%A %b. %-d") if Time.now.strftime("%B").length > 6
+    now = "#{now}#{get_number_suffix(now)}"
+    items.push SyncSign::Widget::Textbox.new(
+      x: 0, y: 72, width: 296, height: 48,
+      align: :center,
+      font: :ddin,
+      size: 32,
+      text: now
+    )
+  else
+    items = [
+      SyncSign::Widget::Textbox.new(
+        x: 0, y: 0, width: 296, height: 56,
+        align: :center,
+        colour: :red,
+        font: :roboto_slab,
+        size: 48,
+        text: "Alert"
+      ),
+      SyncSign::Widget::Textbox.new(
+        x: 0, y: 56, width: 296, height: 80,
+        align: :center,
+        font: :roboto_slab,
+        size: 24,
+        linespacing: 6,
+        text: alerts[0..1].join("\n")
+      ),
+      SyncSign::Widget::Textbox.new(
+        x: 8, y: 8, width: 64, height: 32,
+        font: :charriot,
+        size: 10,
+        text: Time.now.strftime("%Y-%m-%d")
+      )
+    ]
+    if(alerts.length > 2) then
+      items.push SyncSign::Widget::Textbox.new(
+        x: 0, y: 121, width: 296, height: 8,
+        align: :center,
+        font: :charriot,
+        size: 10,
+        text: "(#{alerts.length-2} more)"
+      )
+    end
+  end
+
+  tmpl = SyncSign::Template.new(items: items)
+  if(last_alerts != alerts or last_acked_alerts != acked_alerts or last_date != Date.today) then
+    puts "Pushing new alerts to sign..."
+    signintf.update(template: tmpl)
+    last_alerts = alerts
+    last_acked_alerts = acked_alerts
+    last_date = Date.today
+  end
+  puts "Sleeping for 5 minutes."
+  sleep 300
+end
+

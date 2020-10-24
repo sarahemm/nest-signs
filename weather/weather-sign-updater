@@ -1,0 +1,92 @@
+#!/usr/bin/ruby
+
+$LOAD_PATH << "../core"
+require 'signcore.rb'
+require './time.rb'
+require './weather.rb'
+require './sign.rb'
+require 'logger'
+require 'pp'
+
+updates_today = ARGV[0].to_i || 0
+
+# if no significant upcoming weather, show MID_HOUR weather until reached, then
+# LATER_HOUR after that, once LATER_HOUR is reached then show tomorrow's NEXT_DAY_HOUR
+MID_HOUR=14
+LATER_HOUR=20
+NEXT_DAY_HOUR=12
+NO_UPDATE_HOURS=[23,00,01,02,03,04]
+
+# temp must change by this much to force a refresh (+/- half this number)
+REFRESH_TEMP_CHG=6
+# same for humidity
+REFRESH_HUMID_CHG=20
+# if 'later' weather time changes by an hour either way, force a refresh
+REFRESH_LATER_TIME_SECS_CHG=3600
+# if 'later' weather time changes by 15 minutes either way and is within
+# two hours of now, force a refresh
+REFRESH_LATER_TIME_SECS_CHG_CLOSE=900
+# refresh every 2 hours even if no significant changes
+# (unless there are literally no changes in which case this is skipped)
+REFRESH_SECS=7200
+
+logger = Logger.new('weather-updater.log')
+logger.datetime_format = '%Y-%m-%d %H:%M'
+
+cfg = SignConfig.new
+weather = Weather.new(apikey: cfg['keys']['climacell'], latitude: cfg['weather']['lat'], longitude: cfg['weather']['lon'], logger: logger)
+sign = Sign.new(logger: logger)
+stats_day = Time.now.day
+while(true) do
+  if(Time.now.day != stats_day) then
+    logger.info "#{updates_today} screen updates in total today."
+    logger.info "New day, resetting display update stats."
+    stats_day = Time.now.day
+    updates_today = 0
+  end
+  if(NO_UPDATE_HOURS.include?(Time.now.hour)) then
+    logger.info "Currently in a no-update hour, skipping updates."
+    sleep 600
+    next
+  end
+  logger.info "Getting updated weather forecasts..."
+  now_weather = weather.now
+  later_forecast = now_weather.is_precipitating? ? weather.next_precip(reverse: true) : weather.next_precip
+  if(!later_forecast) then
+    if(Time.now.hour >= LATER_HOUR) then
+      later_forecast = weather.hourly[Time.tomorrow_at(hour: NEXT_DAY_HOUR)]
+    elsif(Time.now.hour >= MID_HOUR) then
+      later_forecast = weather.hourly[Time.today_at(hour: LATER_HOUR)]
+    else
+      later_forecast = weather.hourly[Time.today_at(hour: MID_HOUR)]
+    end
+  end
+  logger.info "Pushing update to sign..."
+  logger.debug "now: #{now_weather.weather_type} later: #{later_forecast.weather_type} later time: #{later_forecast.time}"
+  update_status = sign.update(
+    now_type: now_weather.weather_type,
+    now_temp: now_weather.temperature,
+    now_humidity: now_weather.humidity,
+    now_daynight: now_weather.day_night,
+    later_type: later_forecast.weather_type,
+    later_temp: later_forecast.temperature,
+    later_humidity: later_forecast.humidity,
+    later_time: later_forecast.time,
+    later_daynight: later_forecast.day_night,
+    later_resolution: later_forecast.resolution,
+    updates_today: updates_today + 1
+  )
+  if(update_status == :updated) then
+    logger.info "Update complete."
+    updates_today += 1
+    puts "#{updates_today} screen update#{updates_today == 1 ? "" : "s"} so far today."
+  elsif(update_status == :identical) then
+    logger.info "Update skipped, no display changes to make."
+  elsif(update_status == :stale_data_ok)
+    logger.info "Update skipped, data is stale but acceptable."
+  else
+    logger.debug "Unknown update status."
+  end
+  
+  sleep 900
+end

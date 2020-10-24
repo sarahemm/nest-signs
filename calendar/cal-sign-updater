@@ -1,0 +1,26 @@
+#!/usr/bin/ruby
+
+$LOAD_PATH << "../core"
+
+require 'signcore.rb'
+
+require './calendar.rb'
+require './sign.rb'
+require './ui.rb'
+
+SCREEN_RETURN_TIME = 90
+TOMORROW_AFTER_HOUR = 20
+
+puts "Initializing calendar manager..."
+cal = CalendarManager.new
+
+puts "Initializing sign manager..."
+sign = SignManager.new()
+
+puts "Initializing UI manager..."
+ui = UIManager.new(signmgr: sign, calmgr: cal)
+
+puts "Ready!"
+ui.run
+
+

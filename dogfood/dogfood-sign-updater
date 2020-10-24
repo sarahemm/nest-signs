@@ -1,0 +1,67 @@
+#!/usr/bin/ruby
+
+$LOAD_PATH << "../core"
+
+require 'signcore.rb'
+require 'yaml'
+require 'logger'
+require 'pp'
+
+require './sign.rb'
+
+def filter_steps(step_info)
+  return nil if !step_info
+  step_info.each do |pet, steps|
+    steps.each_index do |step_idx|
+      step = steps[step_idx]
+      case(step['criteria'])
+        when 'even_days'
+          steps.delete_at(step_idx) if Date.today.mjd.odd?
+        when 'odd_days'
+          steps.delete_at(step_idx) if Date.today.mjd.even?
+      end
+    end
+  end
+
+  step_info
+end
+
+logger = Logger.new(STDOUT)
+logger.datetime_format = '%Y-%m-%d %H:%M'
+sign = Sign.new(logger: logger)
+displayed_meal_time = nil
+while(true) do
+  schedule = YAML.load(File.read("schedule.yaml"))
+
+  current_meal = nil
+  schedule.each do |meal_key, info|
+    (display_hour, display_minute) = info['display_time'].split(':')
+    display_time = Time.new(Time.now.year, Time.now.month, Time.now.day, display_hour, display_minute)
+    # if nothing matches the below if statement, we set current meal to the last one
+    current_meal = meal_key
+    # whichever meal is the last one we're not yet past is the current one
+    if(display_time > Time.now) then
+      current_meal = meal_key - 1
+      break
+    end
+  end
+  if(current_meal == -1) then
+    #logger.info "No meal active yet today, sleeping."
+    sleep 300
+    next
+  end
+  meal_info = schedule[current_meal]
+  if(displayed_meal_time != meal_info['display_time']) then
+    logger.info("Displaying information for #{meal_info['meal']}")
+    displayed_meal_time = meal_info['display_time']
+    feed = filter_steps(meal_info['feed'])
+    prepare = filter_steps(meal_info['prepare'])
+    update_status = sign.update(
+      meal: meal_info['meal'],
+      feed: feed,
+      prepare: prepare,
+    )
+  end
+  
+  sleep 300
+end
