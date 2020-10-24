@@ -33,7 +33,7 @@ class UIManager
   end
 
   def process_updates
-    puts "Getting list of events..."
+    #puts "Getting list of events..."
     events = @cal.get_events(
       date: self.current_date,
       one_day: (self.effective_screen != :more_events),
@@ -43,9 +43,10 @@ class UIManager
         "i5ha25ah2lb3sl525lln97mndo@group.calendar.google.com"
       ]
     )
-    print "Pushing events to sign..."
+    #print "Pushing events to sign..."
     updated = @sign.update(events: events, title: current_screen_title, buttons: current_buttons, one_day: (self.effective_screen != :more_events))
-    puts updated ? "done." : "skipped."
+    #puts updated ? "done." : "skipped."
+    puts "Updated events on sign." if updated
   end
   
   def current_screen=(new_screen)
