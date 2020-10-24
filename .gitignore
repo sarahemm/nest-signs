@@ -57,3 +57,4 @@ build-iPhoneSimulator/
 
 credentials.json
 token.yaml
+alerts-acked.txt
