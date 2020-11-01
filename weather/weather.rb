@@ -127,7 +127,7 @@ class Weather
     end
 
     def is_precipitating?
-      @precipitation[:value] and @precipitation[:value] > 0
+      @precipitation[:amount] and @precipitation[:amount] > 0
     end
   end
 end
