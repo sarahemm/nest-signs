@@ -32,6 +32,11 @@ REFRESH_LATER_TIME_SECS_CHG_CLOSE=900
 # (unless there are literally no changes in which case this is skipped)
 REFRESH_SECS=7200
 
+# only show windchill if it's at least X degrees below real temp
+WINDCHILL_DIFF=3
+# only show windchill if the real temp is below X degrees
+WINDCHILL_MAX_TEMP=0
+
 logger = Logger.new('weather-updater.log')
 logger.datetime_format = '%Y-%m-%d %H:%M'
 
@@ -68,10 +73,12 @@ while(true) do
   update_status = sign.update(
     now_type: now_weather.weather_type,
     now_temp: now_weather.temperature,
+    now_feelslike: now_weather.feels_like,
     now_humidity: now_weather.humidity,
     now_daynight: now_weather.day_night,
     later_type: later_forecast.weather_type,
     later_temp: later_forecast.temperature,
+    later_feelslike: later_forecast.feels_like,
     later_humidity: later_forecast.humidity,
     later_time: later_forecast.time,
     later_daynight: later_forecast.day_night,

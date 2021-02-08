@@ -18,12 +18,19 @@ class Sign
     @signintf = SignInterface.new(type: :weather)
   end
 
-  def update(now_type:, now_temp:, now_humidity:, now_daynight:, later_type: nil, later_temp: nil, later_humidity: nil, later_time: nil, later_daynight: nil, later_resolution: nil, updates_today:)
+  def update(now_type:, now_temp:, now_feelslike:, now_humidity:, now_daynight:, later_type: nil, later_temp: nil, later_feelslike: nil, later_humidity: nil, later_time: nil, later_daynight: nil, later_resolution: nil, updates_today:)
+    now_temp_type = :real
+    now_temp_display = now_temp
+    if(now_feelslike < now_temp - WINDCHILL_DIFF and now_temp < WINDCHILL_MAX_TEMP) then
+      now_temp_type = :wind_chill
+      now_temp_display = now_feelslike
+    end
     items = gen_sign_items(
       base_x: 4,
       title: "Now",
       type: now_type,
-      temp: now_temp,
+      temp: now_temp_display,
+      temp_type: now_temp_type,
       humidity: now_humidity,
       day_night: now_daynight
     )
@@ -36,12 +43,20 @@ class Sign
     elsif(later_time.is_tomorrow?) then
       later_time_str = "Tomorrow at #{approx ? "~" : ""}#{later_time.strftime("%H:%M")}"
     end
+    
+    later_temp_type = :real
+    later_temp_display = later_temp
+    if(later_feelslike < later_temp - WINDCHILL_DIFF and later_temp < WINDCHILL_MAX_TEMP) then
+      later_temp_type = :wind_chill
+      later_temp_display = later_feelslike
+    end
 
     later_items = gen_sign_items(
       base_x: 156,
       title: "Later",
       type: later_type,
-      temp: later_temp,
+      temp: later_temp_display,
+      temp_type: later_temp_type,
       humidity: later_humidity,
       day_night: later_daynight
     )
@@ -59,7 +74,7 @@ class Sign
     items.push(SyncSign::Widget::Line.new(x0: 148, y0: 0, x1: 148, y1: 128))
 
     return :identical if items == @last_items
-    update_reasons = is_update_required?(now_type: now_type, now_temp: now_temp, now_humidity: now_humidity, later_type: later_type, later_time: later_time)
+    update_reasons = is_update_required?(now_type: now_type, now_temp: now_temp_display, now_humidity: now_humidity, later_type: later_type, later_time: later_time)
     return :stale_data_ok if !update_reasons
         
     status_string = "#{Time.now.strftime("%H:%M")} #{updates_today} #{update_reasons.join(" ")}"
@@ -90,14 +105,14 @@ class Sign
   
   private
 
-  def gen_sign_items(base_x:, title:, type:, temp:, humidity:, day_night:)
+  def gen_sign_items(base_x:, title:, type:, temp:, humidity:, day_night:, temp_type: :real)
     # generate a group of items for half the weather display
     icon = WEATHER_ICON_MAPPING[day_night][type]
     icon_colour = is_weather_bad?(type) ? :red : :black
     temp_colour = is_temperature_bad?(temp) ? :red : :black
     humidity_colour = is_humidity_bad?(humidity) ? :red : :black
 
-    [
+    items = [
       SyncSign::Widget::Textbox.new(
         x: (base_x+40), y: 0, width: 64, height: 26,
         align: :center,
@@ -121,12 +136,6 @@ class Sign
         colour: temp_colour,
         text: temp.round.to_s
       ),
-      SyncSign::Widget::Symbolbox.new(
-        x: (base_x+106), y: 21, width: 32, height: 48,
-        type: :weather,
-        colour: temp_colour,
-        symbols: [:celsius]
-      ),
       # Humidity
       SyncSign::Widget::Textbox.new(
         x: (base_x+74), y: 68, width: 32, height: 32,
@@ -145,6 +154,26 @@ class Sign
         text: "%"
       ),
     ]
+    case temp_type
+      when :real
+        items << SyncSign::Widget::Symbolbox.new(
+          x: (base_x+106), y: 21, width: 32, height: 48,
+          type: :weather,
+          colour: temp_colour,
+          symbols: [:celsius]
+        )
+      when :wind_chill
+        items << SyncSign::Widget::Textbox.new(
+          x: (base_x+106), y: 40, width: 32, height: 24,
+          align: :right,
+          font: :ddin_condensed,
+          size: 24,
+          colour: temp_colour,
+          text: "WC"
+        )
+    end
+
+    items 
   end
 
   def is_weather_bad?(conditions)
