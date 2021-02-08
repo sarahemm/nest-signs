@@ -1,36 +1,46 @@
 ---
   0:
     display_time: '04:00'
+    meal: AM Snack
+    feed:
+      pavot:
+        - {food: '0.75 cups food'}
+  1:
+    display_time: '07:00'
     meal: Breakfast
     feed:
       pavot:
-        - {food: '1.25 cups food'}
+        - {food: '0.75 cups food'}
         - {med: '1/4 tsp Tylan', criteria: 'even_days'}
-  1:
+    prepare:
+      boom:
+        - {food: '0.75 cups food'}
+  2:
     display_time: '10:30'
     meal: Lunch
     feed:
       boom:
         - {food: '2.5 cups food'}
+        - {med: '1pk FortiFlora'}
       pavot:
         - {food: '1.25 cups food'}
         - {med: '1pk FortiFlora', criteria: 'odd_days'}
-  2:
-    display_time: '14:30'
+  3:
+    display_time: '17:30'
     meal: Supper
     feed:
       boom:
         - {food: '1.5 cups food'}
+        - {med: '25kg Metacam'}
       pavot:
         - {food: '1 cup food'}
         - {med: '1/4 tsp Tylan', criteria: 'even_days'}
-  3:
+  4:
     display_time: '20:15'
     meal: Snack
     prepare:
       boom:
         - {food: '1 cup food'}
-        - {med: '20kg Metacam'}
     feed:
       pavot:
         - {food: '1 cup food'}

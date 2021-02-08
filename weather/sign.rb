@@ -82,7 +82,7 @@ class Sign
     @last_items = items.clone
     @last_data = {
       now_type: now_type,
-      now_temp: now_temp,
+      now_temp: now_temp_display,
       now_humidity: now_humidity,
       later_type: later_type,
       later_time: later_time,
