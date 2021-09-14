@@ -23,6 +23,8 @@ NO_UPDATE_HOURS=[23,00,01,02,03,04]
 REFRESH_TEMP_CHG=6
 # same for humidity
 REFRESH_HUMID_CHG=20
+# don't refresh based on humidity if temperature is below this
+IGNORE_HUMID_BELOW=10
 # if 'later' weather time changes by an hour either way, force a refresh
 REFRESH_LATER_TIME_SECS_CHG=3600
 # if 'later' weather time changes by 15 minutes either way and is within

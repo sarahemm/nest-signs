@@ -110,7 +110,7 @@ class Sign
     icon = WEATHER_ICON_MAPPING[day_night][type]
     icon_colour = is_weather_bad?(type) ? :red : :black
     temp_colour = is_temperature_bad?(temp) ? :red : :black
-    humidity_colour = is_humidity_bad?(humidity) ? :red : :black
+    humidity_colour = is_humidity_bad?(temperature: temp, humidity: humidity) ? :red : :black
 
     items = [
       SyncSign::Widget::Textbox.new(
@@ -188,8 +188,8 @@ class Sign
     !temp.between?(-10, +26)
   end
 
-  def is_humidity_bad?(humidity)
-    humidity > 70
+  def is_humidity_bad?(temperature:, humidity:)
+    humidity > 70 and temperature >= 15
   end
 
   def is_update_required?(now_type:, now_temp:, now_humidity:, later_type:, later_time:)
@@ -200,6 +200,11 @@ class Sign
     max_stale_temp = @last_data[:now_temp] + REFRESH_TEMP_CHG/2
     min_stale_humidity = @last_data[:now_humidity] - REFRESH_HUMID_CHG/2
     max_stale_humidity = @last_data[:now_humidity] + REFRESH_HUMID_CHG/2
+    if(now_temp < IGNORE_HUMID_BELOW) then
+      # don't refresh based on humidity if it's cold out
+      min_stale_humidity = 0
+      max_stale_humidity = 100
+    end
 
     
     if(is_weather_bad?(@last_data[:now_type]) != is_weather_bad?(now_type)) then
